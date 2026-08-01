@@ -12,7 +12,8 @@ public sealed record SearchRequest(
     bool AllowTargetedScan = true,
     bool IncludeAiCandidates = true,
     int MaximumTargetedScanItems = 50_000,
-    SearchIntent? Intent = null);
+    SearchIntent? Intent = null,
+    int MaximumNewVisualDocumentsPerRoot = 0);
 
 public enum SearchIndexingMode
 {

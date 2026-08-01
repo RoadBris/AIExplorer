@@ -2203,6 +2203,30 @@ try
     using (var fakeTextForVisual = new FakeEmbeddingService())
     using (var fakeImageTagger = new FakeImageTaggingService())
     {
+        var onDemandVisualSearch = new MetadataSearchService(
+            fileSystem,
+            Path.Combine(temporaryRoot, "_visual-on-demand-metadata"),
+            Path.Combine(temporaryRoot, "_visual-on-demand-content"),
+            Path.Combine(temporaryRoot, "_visual-on-demand-semantic"),
+            fakeTextForVisual,
+            Path.Combine(temporaryRoot, "_visual-on-demand-vector"),
+            fakeVisual,
+            fakeImageTagger);
+        var visualCallsBeforeOnDemand = fakeVisual.FileEmbeddingCalls;
+        var onDemandVisualResponse = await onDemandVisualSearch.SearchAsync(
+            new SearchRequest(
+                "노을 사진을 찾아줘",
+                [contentRoot],
+                MaximumNewVisualDocumentsPerRoot: 100),
+            progress: null,
+            CancellationToken.None);
+        Assert(
+            fakeVisual.FileEmbeddingCalls > visualCallsBeforeOnDemand &&
+            onDemandVisualResponse.Diagnostics.UsedVisualSearch &&
+            onDemandVisualResponse.Results.Any(result =>
+                result.FullPath == ocrImageFile),
+            "이미지 검색 요청에 한해 누락 시각 색인을 즉시 복구");
+
         var visualSearch = new MetadataSearchService(
             fileSystem,
             Path.Combine(temporaryRoot, "_visual-metadata-index"),
@@ -2466,6 +2490,64 @@ try
                     broadVisualTarget.FullPath,
                     StringComparison.OrdinalIgnoreCase)),
             "캐릭터 신원 태그·파일명·폴더명 근거가 없는 시각 유사 후보 제외");
+    }
+
+    var generatedCollectionRoot = Directory.CreateDirectory(
+        Path.Combine(temporaryRoot, "generated-collection-priority"));
+    var generatedCollectionRecords = Enumerable.Range(0, 60)
+        .Select(index => new IndexedFileRecord
+        {
+            Name = $"resource_{index:000}.png",
+            FullPath = Path.Combine(
+                generatedCollectionRoot.FullName,
+                $"software-{index:000}",
+                $"resource_{index:000}.png"),
+            DirectoryPath = Path.Combine(
+                generatedCollectionRoot.FullName,
+                $"software-{index:000}"),
+            Extension = ".png",
+            IsDirectory = false,
+            SizeBytes = 4,
+            ModifiedUtc = DateTime.UtcNow.AddMinutes(index)
+        })
+        .ToList();
+    var generatedCollectionFolder = Path.Combine(
+        generatedCollectionRoot.FullName,
+        "AI",
+        "ComfyUI",
+        "output");
+    var opaqueGeneratedImage = new IndexedFileRecord
+    {
+        Name = "99887766.png",
+        FullPath = Path.Combine(
+            generatedCollectionFolder,
+            "99887766.png"),
+        DirectoryPath = generatedCollectionFolder,
+        Extension = ".png",
+        IsDirectory = false,
+        SizeBytes = 4,
+        ModifiedUtc = DateTime.UtcNow.AddYears(-3)
+    };
+    generatedCollectionRecords.Add(opaqueGeneratedImage);
+    using (var generatedCollectionFake = new FakeVisualEmbeddingService())
+    {
+        var generatedCollectionIndex = new VisualIndexService(
+            Path.Combine(temporaryRoot, "_generated-collection-index"),
+            generatedCollectionFake);
+        _ = await generatedCollectionIndex.FindCandidatesAsync(
+            generatedCollectionRoot.FullName,
+            SearchQueryInterpreter.Interpret(
+                "란마 이미지를 찾아줘"),
+            generatedCollectionRecords,
+            maximumResults: 20,
+            maximumNewDocuments: 8,
+            progress: null,
+            CancellationToken.None);
+        Assert(
+            generatedCollectionFake.EmbeddedFiles.Contains(
+                opaqueGeneratedImage.FullPath,
+                StringComparer.OrdinalIgnoreCase),
+            "캐릭터 검색에서 AI·ComfyUI 모음의 불투명 파일명을 먼저 시각 분석");
     }
 
     var volumeVisualRoot = Directory.CreateDirectory(
@@ -3478,6 +3560,8 @@ sealed class FakeVisualEmbeddingService : IVisualEmbeddingService
 
     public int FileEmbeddingCalls { get; private set; }
 
+    public List<string> EmbeddedFiles { get; } = [];
+
     public string ModelId => "smoke-test-visual-v1";
 
     public bool CanAnalyze(string extension) =>
@@ -3535,6 +3619,7 @@ sealed class FakeVisualEmbeddingService : IVisualEmbeddingService
     {
         cancellationToken.ThrowIfCancellationRequested();
         FileEmbeddingCalls++;
+        EmbeddedFiles.Add(path);
         return Task.FromResult<float[]?>(
             Path.GetFileName(path).Contains(
                 "ui_",

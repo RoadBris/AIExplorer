@@ -50,7 +50,8 @@ public sealed class VisualIndexService
     public async Task<VisualIndexProbe> ProbeAsync(
         string root,
         IReadOnlyList<IndexedFileRecord> indexedItems,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool requireCharacterTagging = false)
     {
         var documents = SelectVisualDocuments(root, indexedItems);
         if (!_embeddingService.IsAvailable || documents.Count == 0)
@@ -93,14 +94,19 @@ public sealed class VisualIndexService
         var documentsByPath = documents.ToDictionary(
             document => document.FullPath,
             StringComparer.OrdinalIgnoreCase);
-        var currentAttempts = CountCurrentAttempts(snapshot, documentsByPath);
+        var currentAttempts = CountCurrentAttempts(
+            snapshot,
+            documentsByPath,
+            requireCharacterTagging);
         var indexed = snapshot.Documents.Count(record =>
             documentsByPath.TryGetValue(record.FullPath, out var document) &&
             IsCurrent(record, document));
         return new VisualIndexProbe(
             Exists: true,
             IsComplete: currentAttempts >= documentsByPath.Count,
-            IndexedDocuments: indexed,
+            IndexedDocuments: requireCharacterTagging
+                ? currentAttempts
+                : indexed,
             TotalDocuments: documentsByPath.Count);
     }
 
@@ -373,7 +379,10 @@ public sealed class VisualIndexService
             snapshot.Documents.Count,
             documents.Count,
             update.NewlyIndexedDocuments,
-            CountCurrentAttempts(snapshot, documentsByPath) >=
+            CountCurrentAttempts(
+                snapshot,
+                documentsByPath,
+                queryProfile.IsNamedSubject) >=
             documents.Count);
     }
 
@@ -782,17 +791,73 @@ public sealed class VisualIndexService
 
     private static double CalculateQueryPriority(
         SearchIntent intent,
-        IndexedFileRecord document)
+        IndexedFileRecord document,
+        bool namedSubjectSearch)
     {
         var metadataCandidate = SearchRankingService.ScoreCandidate(
             intent,
             document);
-        return metadataCandidate is null
+        var metadataPriority = metadataCandidate is null
             ? SearchPathPriority.GetPathPriority(document.DirectoryPath)
             : metadataCandidate.NameMatchCount * 10_000d +
               metadataCandidate.TypeMatchCount * 5_000d +
               metadataCandidate.PathMatchCount * 1_000d +
               metadataCandidate.Score;
+        return metadataPriority +
+               (namedSubjectSearch
+                   ? GetGeneratedImageCollectionPriority(document)
+                   : 0d);
+    }
+
+    private static double GetGeneratedImageCollectionPriority(
+        IndexedFileRecord document)
+    {
+        var segments = document.DirectoryPath
+            .Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries |
+                StringSplitOptions.TrimEntries);
+        var priority = 0d;
+        foreach (var rawSegment in segments)
+        {
+            var segment = rawSegment.ToLowerInvariant();
+            if (segment is "ai" or "ai images" or "ai image" or
+                "ai 이미지" or "comfyui" or "novelai" or
+                "automatic1111" or "stable diffusion" or
+                "stable-diffusion" or "stable-diffusion-webui" ||
+                segment.Contains("comfyui", StringComparison.Ordinal) ||
+                segment.Contains(
+                    "stable-diffusion",
+                    StringComparison.Ordinal))
+            {
+                priority = Math.Max(priority, 60_000d);
+                continue;
+            }
+
+            if (segment is "output" or "outputs" or "generated" or
+                "generations" or "images" or "pictures" or
+                "이미지" or "사진")
+            {
+                priority = Math.Max(priority, 18_000d);
+            }
+        }
+
+        var stem = Path.GetFileNameWithoutExtension(document.Name);
+        if (stem.Contains("comfy", StringComparison.OrdinalIgnoreCase) ||
+            stem.StartsWith("nai_", StringComparison.OrdinalIgnoreCase) ||
+            stem.Contains("generated", StringComparison.OrdinalIgnoreCase))
+        {
+            priority += 20_000d;
+        }
+        else if (stem.Length >= 5 &&
+                 stem.Count(char.IsDigit) >= stem.Length * 3 / 4)
+        {
+            // Camera exports and AI outputs often have opaque numeric names.
+            // This is only a tie-breaker inside an explicit named-image search.
+            priority += 2_000d;
+        }
+
+        return priority;
     }
 
     private IndexedFileRecord[] SelectPendingDocuments(
@@ -827,7 +892,10 @@ public sealed class VisualIndexService
                 intent is null
                     ? SearchPathPriority.GetPathPriority(
                         document.DirectoryPath)
-                    : CalculateQueryPriority(intent, document)))
+                    : CalculateQueryPriority(
+                        intent,
+                        document,
+                        forceCharacterTagging)))
             .ToArray();
         if (pending.Length <= capacity)
         {
@@ -849,7 +917,11 @@ public sealed class VisualIndexService
                          .OrderByDescending(item => item.Priority)
                          .ThenByDescending(item =>
                              item.Document.ModifiedUtc)
-                         .Take(Math.Max(1, capacity / 2)))
+                         .Take(Math.Max(
+                             1,
+                             forceCharacterTagging
+                                 ? capacity * 3 / 4
+                                 : capacity / 2)))
             {
                 selected.Add(item.Document);
                 selectedPaths.Add(item.Document.FullPath);
@@ -958,9 +1030,10 @@ public sealed class VisualIndexService
             AttemptedUtc = DateTime.UtcNow
         };
 
-    private static int CountCurrentAttempts(
+    private int CountCurrentAttempts(
         VisualIndexSnapshot snapshot,
-        IReadOnlyDictionary<string, IndexedFileRecord> documentsByPath)
+        IReadOnlyDictionary<string, IndexedFileRecord> documentsByPath,
+        bool requireCharacterTagging = false)
     {
         var attemptedPaths = new HashSet<string>(
             StringComparer.OrdinalIgnoreCase);
@@ -969,7 +1042,11 @@ public sealed class VisualIndexService
             if (documentsByPath.TryGetValue(
                     record.FullPath,
                     out var document) &&
-                IsCurrent(record, document))
+                IsCurrent(record, document) &&
+                (!requireCharacterTagging ||
+                 _imageTagger is not { IsAvailable: true } ||
+                 !_imageTagger.CanAnalyze(document.Extension) ||
+                 record.TaggerAnalyzed))
             {
                 attemptedPaths.Add(record.FullPath);
             }

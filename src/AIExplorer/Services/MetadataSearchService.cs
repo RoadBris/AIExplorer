@@ -294,7 +294,11 @@ public sealed class MetadataSearchService
                 var visual = await _visualIndexService.ProbeAsync(
                     root,
                     metadata.Items,
-                    cancellationToken);
+                    cancellationToken,
+                    requireCharacterTagging:
+                        VisualQueryPromptBuilder
+                            .Analyze(intent)
+                            .IsNamedSubject);
                 visualDocuments += visual.IndexedDocuments;
                 visualFiles += visual.TotalDocuments;
                 if (!visual.IsComplete)
@@ -823,7 +827,8 @@ public sealed class MetadataSearchService
                         intent,
                         indexedItems,
                         maximumResults,
-                        maximumNewDocuments: 0,
+                        maximumNewDocuments:
+                            request.MaximumNewVisualDocumentsPerRoot,
                         progress,
                         cancellationToken);
                     usedVisualSearch |= visual.IndexedDocuments > 0;

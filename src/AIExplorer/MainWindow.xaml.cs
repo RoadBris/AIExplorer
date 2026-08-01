@@ -2822,6 +2822,77 @@ public partial class MainWindow : Window
                     Summary: "색인 상태 확인 실패 · 점진 분석으로 계속");
             }
 
+            if (readiness.VisualSearchRequested &&
+                readiness.IncompleteVisualRoots > 0 &&
+                !progressiveResults.Values.Any(result =>
+                    result.WasVisualAnalyzed))
+            {
+                var visualBatchPerRoot = Math.Clamp(
+                    128 / Math.Max(1, roots.Count),
+                    16,
+                    128);
+                var visualDocumentsPerPass = Math.Max(
+                    1,
+                    visualBatchPerRoot * Math.Max(1, roots.Count));
+                var visualRecoveryPassLimit = Math.Clamp(
+                    (readiness.VisualFiles + visualDocumentsPerPass - 1) /
+                    visualDocumentsPerPass + 2,
+                    1,
+                    512);
+                for (var pass = 1;
+                     pass <= visualRecoveryPassLimit &&
+                     readiness.IncompleteVisualRoots > 0 &&
+                     !progressiveResults.Values.Any(result =>
+                         result.WasVisualAnalyzed);
+                     pass++)
+                {
+                    SearchEngineStatusText.Text =
+                        $"이미지 AI 분석 {readiness.VisualDocuments:N0}/" +
+                        $"{readiness.VisualFiles:N0}";
+                    StatusText.Text =
+                        "관련 이미지가 나올 때까지 색인 중 · " +
+                        "검색 버튼으로 중지 가능";
+                    var visualRecoveryResponse =
+                        await SearchExistingIndexesAsync(
+                            query,
+                            roots,
+                            maximumScannedItems,
+                            maximumContentDocuments,
+                            allowTargetedScan: false,
+                            includeAiCandidates: true,
+                            progress,
+                            token,
+                            maximumNewVisualDocumentsPerRoot:
+                                visualBatchPerRoot);
+                    token.ThrowIfCancellationRequested();
+                    latestResponse = visualRecoveryResponse;
+                    changed = MergeProgressiveSearchResults(
+                        progressiveResults,
+                        progressiveOrder,
+                        visualRecoveryResponse.Results,
+                        500,
+                        out added);
+                    totalNewResults += added;
+                    if (changed > 0)
+                    {
+                        StartSearchPreviewLoading();
+                    }
+
+                    readiness = await _searchService.GetIndexReadinessAsync(
+                        query,
+                        roots,
+                        maximumScannedItems,
+                        maximumContentDocuments,
+                        token,
+                        _activeSearchIntent);
+                    AppLog.Info(
+                        $"On-demand visual recovery pass {pass}: " +
+                        $"{readiness.VisualDocuments}/" +
+                        $"{readiness.VisualFiles} ready, " +
+                        $"{added} new results.");
+                }
+            }
+
             if (hasNetworkRoots && !readiness.RequiresIndexing)
             {
                 readiness = readiness with
@@ -3009,7 +3080,8 @@ public partial class MainWindow : Window
         bool includeAiCandidates,
         IProgress<SearchProgress>? progress,
         CancellationToken cancellationToken,
-        int maximumTargetedScanItems = 50_000) =>
+        int maximumTargetedScanItems = 50_000,
+        int maximumNewVisualDocumentsPerRoot = 0) =>
         _searchService.SearchAsync(
             new SearchRequest(
                 query,
@@ -3021,7 +3093,9 @@ public partial class MainWindow : Window
                 AllowTargetedScan: allowTargetedScan,
                 IncludeAiCandidates: includeAiCandidates,
                 MaximumTargetedScanItems: maximumTargetedScanItems,
-                Intent: _activeSearchIntent),
+                Intent: _activeSearchIntent,
+                MaximumNewVisualDocumentsPerRoot:
+                    maximumNewVisualDocumentsPerRoot),
             progress,
             cancellationToken);
 
