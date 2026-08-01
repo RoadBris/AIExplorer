@@ -247,7 +247,7 @@ _AIExplorer_Data\models\visual
 
 ## 개발 실행
 
-Windows 10/11과 .NET 10 SDK가 필요합니다.
+Windows 10/11과 .NET 10 SDK가 요구됩니다.
 
 1. `run_dev.cmd`를 실행합니다.
 2. 또는 Visual Studio에서 `AIExplorer.sln`을 엽니다.
@@ -256,6 +256,11 @@ Windows 10/11과 .NET 10 SDK가 필요합니다.
 복원하도록 고정합니다. `NU1100` 오류가 계속되면 브라우저에서
 `https://api.nuget.org/v3/index.json` 접속이 되는지 확인하고, 방화벽·프록시·보안
 프로그램이 `api.nuget.org`를 차단하지 않는지 확인합니다.
+
+
+프로그램을 exe 형태로 만들고 실제로 사용하기 위해서는 'build_release.cmd' 파일을 실행합니다.
+dist 폴더 안에 실행 가능한 exe 파일이 생성되며, AI 모델 등이 자동으로 다운로드 됩니다.
+
 
 ## 검증과 포터블 AI 번들 빌드
 
@@ -308,13 +313,6 @@ _AIExplorer_Data\models\semantic\local-ai-runtime.log
 .\build_release.cmd > build_log.txt 2>&1
 ```
 
-## 아직 구현하지 않은 기능
-
-- 색인 관리 화면, 수동 전체 재색인, 파일 시스템 변경 실시간 반영
-- PDF 모든 페이지 및 구형 DOC/XLS/PPT/HWP 본문 추출
-- OCR·문서의 페이지·슬라이드·시트 단위 근거 구간 표시
-- PSD·RAW·SVG 내부 렌더링과 영상 프레임 시각 검색
-- 파일 충돌 시 세부 선택 창과 파일별 전송 진행률
 
 자세한 내부 구조와 다음 단계는 `docs/ARCHITECTURE.md`와
 `docs/ROADMAP.md`에 정리되어 있습니다.
