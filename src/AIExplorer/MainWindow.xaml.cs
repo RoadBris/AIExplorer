@@ -200,7 +200,11 @@ public partial class MainWindow : Window
         SearchResultSortComboBox.SelectedIndex =
             (int)_searchResultSortMode;
         BuildNavigationTree();
-        SetSearchPanelVisible(_settings.SearchPanelVisible, persist: false);
+        // Older builds could persist a hidden search panel through the
+        // removed result-collapse action. Restore it on startup so search
+        // can never disappear after upgrading.
+        _settings.SearchPanelVisible = true;
+        SetSearchPanelVisible(true, persist: false);
         UpdateAiModelUi();
 
         var initialPath = ResolveInitialPath();

@@ -444,7 +444,6 @@ if (-not $MainWindowXamlText.Contains('PreviewMouseDown="Window_PreviewMouseDown
     -not $MainWindowXamlText.Contains('x:Name="InstantTitlePanelColumn"') -or
     -not $MainWindowXamlText.Contains('ResizeDirection="Columns"') -or
     -not $MainWindowXamlText.Contains('x:Name="InstantTitleSearchPanel"') -or
-    -not $MainWindowXamlText.Contains('x:Name="CollapseSearchResultsButton"') -or
     -not $MainWindowXamlText.Contains('x:Name="SearchResultSortComboBox"') -or
     -not $MainWindowText.Contains('SearchResultSortComboBox_SelectionChanged') -or
     -not $AppSettingsText.Contains('SearchResultSortMode SearchResultSortMode') -or

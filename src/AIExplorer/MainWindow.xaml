@@ -881,7 +881,6 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="190" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal"
                                         Visibility="Collapsed">
@@ -918,15 +917,6 @@
                                 <ComboBoxItem Content="가나다순" />
                                 <ComboBoxItem Content="수정 날짜순 (최신 먼저)" />
                             </ComboBox>
-                            <Button x:Name="CollapseSearchResultsButton"
-                                    Grid.Column="3"
-                                    Style="{StaticResource SecondaryButtonStyle}"
-                                    Content="결과 접기"
-                                    Height="30"
-                                    Padding="10,3"
-                                    Margin="8,0,0,0"
-                                    ToolTip="검색 영역 접기"
-                                    Click="CollapseSearchPanelButton_Click" />
                         </Grid>
 
                         <Grid x:Name="SearchResultsHostGrid"

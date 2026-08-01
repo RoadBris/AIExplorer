@@ -1694,7 +1694,6 @@ def validate_explorer_input_and_responsive_results_contract() -> None:
         (window_markup, 'x:Name="SearchPanelColumn"'),
         (window_markup, 'x:Name="InstantTitlePanelColumn"'),
         (window_markup, 'ResizeDirection="Columns"'),
-        (window_markup, 'x:Name="CollapseSearchResultsButton"'),
         (window_markup, 'x:Name="SearchResultSortComboBox"'),
         (window_code, "SearchResultSortComboBox_SelectionChanged"),
         (app_settings, "SearchResultSortMode SearchResultSortMode"),
