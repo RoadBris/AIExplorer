@@ -10,6 +10,20 @@ try
     Directory.CreateDirectory(temporaryRoot);
     var contentRoot = Directory.CreateDirectory(
         Path.Combine(temporaryRoot, "content")).FullName;
+    var bulkResetNotifications = 0;
+    var bulkResults = new BulkObservableCollection<int>();
+    bulkResults.CollectionChanged += (_, args) =>
+    {
+        if (args.Action ==
+            System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+        {
+            bulkResetNotifications++;
+        }
+    };
+    bulkResults.ReplaceAll(Enumerable.Range(0, 3_000));
+    Assert(
+        bulkResults.Count == 3_000 && bulkResetNotifications == 1,
+        "대량 검색 결과를 항목별이 아닌 단일 UI 배치로 교체");
     var sourceFolder = Directory.CreateDirectory(
         Path.Combine(contentRoot, "14층 무선 점검"));
     var accountDocumentFolder = Directory.CreateDirectory(
@@ -2248,6 +2262,17 @@ try
             visualWarmup.VisualDocuments > 0,
             "검색 전에 시각 색인 준비");
         var visualFileCallsAfterWarmup = fakeVisual.FileEmbeddingCalls;
+        var ordinaryPdfResponse = await visualSearch.SearchAsync(
+            new SearchRequest(
+                "PDF 파일을 찾아줘",
+                [contentRoot],
+                MaximumNewVisualDocumentsPerRoot: 100),
+            progress: null,
+            CancellationToken.None);
+        Assert(
+            !ordinaryPdfResponse.Diagnostics.UsedVisualSearch &&
+            fakeVisual.FileEmbeddingCalls == visualFileCallsAfterWarmup,
+            "일반 PDF·파일명 검색에서 무거운 시각 AI 색인을 시작하지 않음");
         var visualResponse = await visualSearch.SearchAsync(
             new SearchRequest(
                 "노을 사진을 찾아줘",
@@ -3126,6 +3151,48 @@ try
             .SelectMany(state => state.NewHits)
             .Any(hit => hit.FullPath == indexedSkyrimFolder.FullName),
         "간단한 폴더 자연어 검색을 완료된 제목 색인에서 즉시 처리");
+    var liveNameFixtures = new[]
+    {
+        (Query: "geforce 관련 파일을 찾아줘",
+            Name: "GeForce_Experience_v3.25.1.27.exe"),
+        (Query: "parallax 자료를 찾아줘",
+            Name: "project-parallax-notes.txt"),
+        (Query: "파일질라 설치 파일을 찾아줘",
+            Name: "FileZilla_3.69.5_win64-setup.exe"),
+        (Query: "디스코드 설치 파일을 찾아줘",
+            Name: "DiscordSetup.exe"),
+        (Query: "슬랙 설치 파일을 찾아줘",
+            Name: "SlackSetup.exe")
+    };
+    foreach (var fixture in liveNameFixtures)
+    {
+        var livePath = Path.Combine(contentRoot, fixture.Name);
+        await File.WriteAllTextAsync(livePath, "created after title indexing");
+        var liveEvents = new List<TitleSearchProgress>();
+        var liveSummary = await instantTitleSearch.SearchNaturalLanguageAsync(
+            fixture.Query,
+            [contentRoot],
+            maximumResults: 100,
+            progress: new CollectingProgress<TitleSearchProgress>(liveEvents),
+            CancellationToken.None);
+        var liveHit = liveEvents
+            .SelectMany(state => state.NewHits)
+            .FirstOrDefault(hit => string.Equals(
+                hit.FullPath,
+                livePath,
+                StringComparison.OrdinalIgnoreCase));
+        Assert(
+            liveSummary.MatchedItems >= 1 &&
+            liveHit is not null &&
+            liveHit.Score > 900d &&
+            liveHit.Reason.Contains(
+                "현재 폴더",
+                StringComparison.Ordinal),
+            "색인 이후 추가된 실파일을 모든 핵심 이름 검색에서 즉시 복구",
+            $"Query={fixture.Query}; File={fixture.Name}; " +
+            $"Matched={liveSummary.MatchedItems}; " +
+            $"Hit={(liveHit is null ? "none" : liveHit.Score)}");
+    }
     var instantFolderResponse = await instantTitleSearch.SearchAsync(
         "지하 3층",
         [contentRoot],

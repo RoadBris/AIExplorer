@@ -167,8 +167,9 @@ $TitleProgressBlock = $MainWindowText.Substring(
     $TitleProgressStart,
     $TitleProgressEnd - $TitleProgressStart
 )
-if ($TitleProgressBlock.Contains('MergeProgressiveSearchResults')) {
-    throw "Title-only hits must not be copied into integrated search results."
+if (-not $TitleProgressBlock.Contains('MergeProgressiveSearchResults') -or
+    -not $TitleProgressBlock.Contains('newTitleResults')) {
+    throw "Live filename hits must appear in both title and integrated results."
 }
 if (-not $TitleSearchText.Contains('intent.RequestedExtensions.Count == 0') -or
     -not $TitleSearchText.Contains('intent.Categories.Count == 0') -or

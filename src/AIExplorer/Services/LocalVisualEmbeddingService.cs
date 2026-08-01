@@ -327,7 +327,7 @@ public sealed class LocalVisualEmbeddingService : IVisualEmbeddingService
                 GraphOptimizationLevel.ORT_ENABLE_ALL,
             IntraOpNumThreads = useDirectMl
                 ? 1
-                : Math.Clamp(Environment.ProcessorCount / 2, 1, 4),
+                : Math.Clamp(Environment.ProcessorCount / 3, 1, 2),
             InterOpNumThreads = 1,
             EnableCpuMemArena = true,
             EnableMemoryPattern = !useDirectMl,

@@ -1315,8 +1315,7 @@ public sealed class MetadataSearchService
     private static bool ShouldSearchVisually(SearchIntent intent) =>
         intent.Categories.Contains(FileCategory.Image) ||
         intent.RequestedExtensions.Any(extension =>
-            FileTypeCatalog.GetCategory(extension) == FileCategory.Image ||
-            extension.Equals(".pdf", StringComparison.OrdinalIgnoreCase)) ||
+            FileTypeCatalog.GetCategory(extension) == FileCategory.Image) ||
         VisualQueryPromptBuilder.HasKnownVisualConcept(intent.OriginalQuery);
 
     private static IReadOnlyList<IndexedFileRecord> OrderPreferredContentItems(

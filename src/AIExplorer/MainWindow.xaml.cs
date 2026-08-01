@@ -20,7 +20,7 @@ public partial class MainWindow : Window
         "이곳에 검색 문구를 입력하세요.";
     private const string ComputerVirtualPath = "aiexplorer://computer";
     private const string FavoriteReorderDataFormat = "AIExplorer.FavoriteReorder";
-    private const int MaximumSearchPreviewResults = 80;
+    private const int MaximumSearchPreviewResults = 24;
 
     private readonly ShellIconService _shellIconService;
     private readonly FileSystemService _fileSystemService;
@@ -49,6 +49,10 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _instantTitleSearchIdleTimer = new()
     {
         Interval = TimeSpan.FromMilliseconds(220)
+    };
+    private readonly DispatcherTimer _searchPreviewStartTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(300)
     };
 
     private AppSettings _settings = new();
@@ -151,6 +155,11 @@ public partial class MainWindow : Window
         _searchInputIdleTimer.Tick += SearchInputIdleTimer_Tick;
         _instantTitleSearchIdleTimer.Tick +=
             InstantTitleSearchIdleTimer_Tick;
+        _searchPreviewStartTimer.Tick += (_, _) =>
+        {
+            _searchPreviewStartTimer.Stop();
+            StartSearchPreviewLoadingCore();
+        };
         CurrentFolderIcon.Source = _shellIconService.GetStockIcon(ShellStockIcon.Folder);
         DataContext = this;
     }
@@ -159,9 +168,9 @@ public partial class MainWindow : Window
 
     public ObservableCollection<FileSystemEntry> FileItems { get; } = [];
 
-    public ObservableCollection<SearchResult> SearchResults { get; } = [];
+    public BulkObservableCollection<SearchResult> SearchResults { get; } = [];
 
-    public ObservableCollection<SearchResult> TitleSearchResults { get; } = [];
+    public BulkObservableCollection<SearchResult> TitleSearchResults { get; } = [];
 
     public BulkObservableCollection<SearchResult> InstantTitleSearchResults { get; } = [];
 
@@ -247,6 +256,7 @@ public partial class MainWindow : Window
         _isClosing = true;
         _searchInputIdleTimer.Stop();
         _instantTitleSearchIdleTimer.Stop();
+        _searchPreviewStartTimer.Stop();
         _navigationCancellation?.Cancel();
         _searchCancellation?.Cancel();
         _searchPreviewCancellation?.Cancel();
@@ -2482,10 +2492,25 @@ public partial class MainWindow : Window
 
             if (state.NewHits.Count > 0)
             {
-                MergeTitleSearchResults(
+                var newTitleResults = state.NewHits
+                    .Select(CreateTitleSearchResult)
+                    .ToArray();
+                MergeTitleSearchResultItems(
                     titleResults,
-                    state.NewHits,
+                    newTitleResults,
                     maximumTitleResults);
+                var integratedTitleChanges =
+                    MergeProgressiveSearchResults(
+                        progressiveResults,
+                        progressiveOrder,
+                        newTitleResults,
+                        500,
+                        out var integratedTitleAdded);
+                totalNewResults += integratedTitleAdded;
+                if (integratedTitleChanges > 0)
+                {
+                    StartSearchPreviewLoading();
+                }
                 TitleSearchPlaceholderPanel.Visibility = Visibility.Collapsed;
             }
 
@@ -2828,9 +2853,9 @@ public partial class MainWindow : Window
                     result.WasVisualAnalyzed))
             {
                 var visualBatchPerRoot = Math.Clamp(
-                    128 / Math.Max(1, roots.Count),
-                    16,
-                    128);
+                    32 / Math.Max(1, roots.Count),
+                    8,
+                    32);
                 var visualDocumentsPerPass = Math.Max(
                     1,
                     visualBatchPerRoot * Math.Max(1, roots.Count));
@@ -3194,7 +3219,9 @@ public partial class MainWindow : Window
             IconImage = _shellIconService.GetFileSystemIcon(
                 entry.FullPath,
                 entry.IsDirectory),
-            Score = match.Score,
+            // Installed-app matches supplement real files. They must not
+            // displace a file or folder whose name contains the user's term.
+            Score = Math.Min(match.Score, 820d),
             MatchPercent = match.MatchPercent,
             WasAiAnalyzed = false,
             WasVisualAnalyzed = false,
@@ -3257,35 +3284,13 @@ public partial class MainWindow : Window
     private void UpdateTitleSearchResults(
         IReadOnlyList<SearchResult> desiredResults)
     {
+        var uiUpdate = Stopwatch.StartNew();
         var selectedPaths = TitleSearchResultsListBox.SelectedItems
             .Cast<SearchResult>()
             .Select(result => result.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        for (var index = 0; index < desiredResults.Count; index++)
-        {
-            var desired = desiredResults[index];
-            var currentIndex = TitleSearchResults
-                .Select((result, resultIndex) => new { result, resultIndex })
-                .FirstOrDefault(item => string.Equals(
-                    item.result.FullPath,
-                    desired.FullPath,
-                    StringComparison.OrdinalIgnoreCase))
-                ?.resultIndex ?? -1;
-            if (currentIndex < 0)
-            {
-                TitleSearchResults.Insert(index, desired);
-            }
-            else if (currentIndex != index)
-            {
-                TitleSearchResults.Move(currentIndex, index);
-            }
-        }
-
-        while (TitleSearchResults.Count > desiredResults.Count)
-        {
-            TitleSearchResults.RemoveAt(TitleSearchResults.Count - 1);
-        }
+        TitleSearchResults.ReplaceAll(desiredResults);
 
         TitleResultCountBadgeText.Text = $"{TitleSearchResults.Count:N0}개";
         if (!_resultViewChosenByUser &&
@@ -3298,6 +3303,10 @@ public partial class MainWindow : Window
         TitleSearchPlaceholderPanel.Visibility = TitleSearchResults.Count > 0
             ? Visibility.Collapsed
             : Visibility.Visible;
+        LogSlowSearchUiUpdate(
+            "title-results",
+            desiredResults.Count,
+            uiUpdate.ElapsedMilliseconds);
         if (selectedPaths.Count == 0)
         {
             return;
@@ -3311,6 +3320,7 @@ public partial class MainWindow : Window
                 TitleSearchResultsListBox.SelectedItems.Add(result);
             }
         }
+
     }
 
     private int MergeProgressiveSearchResults(
@@ -3433,58 +3443,13 @@ public partial class MainWindow : Window
     private void UpdateProgressiveSearchResults(
         IReadOnlyList<SearchResult> desiredResults)
     {
+        var uiUpdate = Stopwatch.StartNew();
         var selectedPaths = SearchResultsListBox.SelectedItems
             .Cast<SearchResult>()
             .Select(result => result.FullPath)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        for (var index = 0; index < desiredResults.Count; index++)
-        {
-            var desired = desiredResults[index];
-            if (index < SearchResults.Count &&
-                string.Equals(
-                    SearchResults[index].FullPath,
-                    desired.FullPath,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                if (!ReferenceEquals(SearchResults[index], desired))
-                {
-                    SearchResults[index] = desired;
-                }
-
-                continue;
-            }
-
-            var existingIndex = -1;
-            for (var candidateIndex = index + 1;
-                 candidateIndex < SearchResults.Count;
-                 candidateIndex++)
-            {
-                if (string.Equals(
-                        SearchResults[candidateIndex].FullPath,
-                        desired.FullPath,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    existingIndex = candidateIndex;
-                    break;
-                }
-            }
-
-            if (existingIndex >= 0)
-            {
-                SearchResults.Move(existingIndex, index);
-                SearchResults[index] = desired;
-            }
-            else
-            {
-                SearchResults.Insert(index, desired);
-            }
-        }
-
-        while (SearchResults.Count > desiredResults.Count)
-        {
-            SearchResults.RemoveAt(SearchResults.Count - 1);
-        }
+        SearchResults.ReplaceAll(desiredResults);
 
         AiResultCountBadgeText.Text = $"{SearchResults.Count:N0}개";
         if (!_resultViewChosenByUser &&
@@ -3497,6 +3462,10 @@ public partial class MainWindow : Window
         SearchPlaceholderPanel.Visibility = SearchResults.Count > 0
             ? Visibility.Collapsed
             : Visibility.Visible;
+        LogSlowSearchUiUpdate(
+            "integrated-results",
+            desiredResults.Count,
+            uiUpdate.ElapsedMilliseconds);
 
         if (selectedPaths.Count == 0)
         {
@@ -3510,6 +3479,20 @@ public partial class MainWindow : Window
             {
                 SearchResultsListBox.SelectedItems.Add(result);
             }
+        }
+
+    }
+
+    private static void LogSlowSearchUiUpdate(
+        string stage,
+        int itemCount,
+        long elapsedMilliseconds)
+    {
+        if (elapsedMilliseconds >= 200)
+        {
+            AppLog.Warning(
+                $"Slow search UI update: {stage}, " +
+                $"{itemCount} items, {elapsedMilliseconds} ms.");
         }
     }
 
@@ -3885,7 +3868,7 @@ public partial class MainWindow : Window
         evidenceKind switch
         {
             SearchEvidenceKind.ExactName => 800,
-            SearchEvidenceKind.Application => 790,
+            SearchEvidenceKind.Application => 680,
             SearchEvidenceKind.Combined => 760,
             SearchEvidenceKind.VisualCandidate when preferVisual => 740,
             SearchEvidenceKind.NameCandidate => 700,
@@ -3907,10 +3890,7 @@ public partial class MainWindow : Window
         return intent.Categories.Contains(FileCategory.Image) ||
                intent.RequestedExtensions.Any(extension =>
                    FileTypeCatalog.GetCategory(extension) ==
-                   FileCategory.Image ||
-                   extension.Equals(
-                       ".pdf",
-                       StringComparison.OrdinalIgnoreCase)) ||
+                   FileCategory.Image) ||
                VisualQueryPromptBuilder.HasKnownVisualConcept(query);
     }
 
@@ -3968,6 +3948,17 @@ public partial class MainWindow : Window
     }
 
     private void StartSearchPreviewLoading()
+    {
+        if (_isClosing)
+        {
+            return;
+        }
+
+        _searchPreviewStartTimer.Stop();
+        _searchPreviewStartTimer.Start();
+    }
+
+    private void StartSearchPreviewLoadingCore()
     {
         if (_searchPreviewCancellation is not null ||
             _searchPreviewAttemptedPaths.Count >=
@@ -4053,6 +4044,7 @@ public partial class MainWindow : Window
 
     private void CancelSearchPreviewLoading()
     {
+        _searchPreviewStartTimer.Stop();
         var cancellation = _searchPreviewCancellation;
         _searchPreviewCancellation = null;
         cancellation?.Cancel();

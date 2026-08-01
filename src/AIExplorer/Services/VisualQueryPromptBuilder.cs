@@ -515,7 +515,6 @@ public static partial class VisualQueryPromptBuilder
             query.Contains(
                 pair.Key,
                 StringComparison.OrdinalIgnoreCase)) ||
-        query.Contains("pdf", StringComparison.OrdinalIgnoreCase) ||
         query.Contains("scan", StringComparison.OrdinalIgnoreCase) ||
         query.Contains("screenshot", StringComparison.OrdinalIgnoreCase) ||
         query.Contains("photo", StringComparison.OrdinalIgnoreCase) ||

@@ -439,6 +439,27 @@ public static class SearchRankingService
             }
         }
 
+        if (term.Original.Any(character =>
+                character is >= '\uAC00' and <= '\uD7A3'))
+        {
+            foreach (var word in candidateWords)
+            {
+                var phoneticSimilarity =
+                    KoreanEnglishPhoneticMatcher.CalculateBestSimilarity(
+                        word,
+                        term.Original);
+                if (phoneticSimilarity >= 0.76d)
+                {
+                    best = Better(
+                        best,
+                        new TermMatch(
+                            0.62d +
+                            Math.Min(0.16d, phoneticSimilarity - 0.76d),
+                            false));
+                }
+            }
+        }
+
         return best;
     }
 

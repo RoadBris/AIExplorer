@@ -8,6 +8,9 @@ namespace AIExplorer.Services;
 public sealed class InstantTitleSearchService
 {
     private const int MaximumIndexedItemsPerRoot = 1_000_000;
+    private const int MaximumLiveCurrentFolderItems = 10_000;
+    private static readonly EnumerationOptions LiveEnumerationOptions =
+        SearchVisibilityPolicy.CreateEnumerationOptions();
     private readonly MetadataIndexService _indexService;
     private readonly ConditionalWeakTable<
         MetadataIndexSnapshot,
@@ -354,12 +357,15 @@ public sealed class InstantTitleSearchService
         var intent = providedIntent ??
                      SearchQueryInterpreter.Interpret(query);
         var candidateTerms = BuildNaturalCandidateTerms(intent);
+        var liveCurrentFolder = normalizedRoots.FirstOrDefault() ??
+                                string.Empty;
         return await Task.Run(
                 () => SearchNaturalLanguagePreparedIndexes(
                     query,
                     intent,
                     candidateTerms,
                     preparedSnapshots,
+                    liveCurrentFolder,
                     Math.Max(1, maximumResults),
                     skippedRoots,
                     progress,
@@ -454,6 +460,7 @@ public sealed class InstantTitleSearchService
         SearchIntent intent,
         IReadOnlyList<string> candidateTerms,
         IReadOnlyList<PreparedSnapshot> preparedSnapshots,
+        string liveCurrentFolder,
         int maximumResults,
         int skippedRoots,
         IProgress<TitleSearchProgress>? progress,
@@ -466,6 +473,24 @@ public sealed class InstantTitleSearchService
         var seenPaths = new HashSet<string>(
             StringComparer.OrdinalIgnoreCase);
         var scannedItems = 0;
+        var liveHits = SearchLiveCurrentFolder(
+            liveCurrentFolder,
+            matcher,
+            maximumResults,
+            seenPaths,
+            ref scannedItems,
+            cancellationToken);
+        hits.AddRange(liveHits);
+        if (liveHits.Count > 0)
+        {
+            progress?.Report(new TitleSearchProgress(
+                scannedItems,
+                hits.Count,
+                liveCurrentFolder,
+                liveHits,
+                IsCompleted: false));
+        }
+
         foreach (var prepared in preparedSnapshots)
         {
             IReadOnlyList<int>? candidateIds = candidateTerms.Count > 0
@@ -546,6 +571,117 @@ public sealed class InstantTitleSearchService
             scannedItems,
             orderedHits.Length,
             skippedRoots);
+    }
+
+    private static IReadOnlyList<TitleSearchHit> SearchLiveCurrentFolder(
+        string root,
+        TitleSearchService.TitleMatcher matcher,
+        int maximumResults,
+        ISet<string> seenPaths,
+        ref int scannedItems,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(root))
+        {
+            return [];
+        }
+
+        var hits = new List<TitleSearchHit>();
+        try
+        {
+            foreach (var path in Directory
+                         .EnumerateFiles(
+                             root,
+                             "*",
+                             LiveEnumerationOptions)
+                         .Concat(Directory.EnumerateDirectories(
+                             root,
+                             "*",
+                             LiveEnumerationOptions)))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (scannedItems >= MaximumLiveCurrentFolderItems ||
+                    hits.Count >= maximumResults)
+                {
+                    break;
+                }
+
+                scannedItems++;
+                var name = Path.GetFileName(path);
+                if (SearchVisibilityPolicy.IsExcludedName(name))
+                {
+                    continue;
+                }
+
+                var isDirectory = Directory.Exists(path);
+                if (!matcher.TryMatch(
+                        name,
+                        path,
+                        isDirectory,
+                        out var score,
+                        out var matchPercent,
+                        out var isExact,
+                        out var reason) ||
+                    !seenPaths.Add(path))
+                {
+                    continue;
+                }
+
+                DateTime? modifiedLocal = null;
+                DateTime? createdLocal = null;
+                try
+                {
+                    FileSystemInfo info = isDirectory
+                        ? new DirectoryInfo(path)
+                        : new FileInfo(path);
+                    var modifiedUtc = info.LastWriteTimeUtc;
+                    var createdUtc = info.CreationTimeUtc;
+                    modifiedLocal = modifiedUtc.ToLocalTime();
+                    createdLocal = createdUtc.ToLocalTime();
+                    if (matcher.RequiresFileTimestamps)
+                    {
+                        matcher.ApplyPreferences(
+                            ref score,
+                            ref reason,
+                            createdUtc,
+                            modifiedUtc,
+                            info is FileInfo file ? file.Length : null);
+                    }
+                }
+                catch (Exception exception) when (
+                    exception is UnauthorizedAccessException or
+                        IOException or
+                        NotSupportedException)
+                {
+                    // The live name match remains valid without timestamps.
+                }
+
+                // A file verified in the currently visible folder must rank
+                // ahead of a Start-menu shortcut with the same keyword.
+                score = Math.Max(930d, score + 140d);
+                reason = "현재 폴더에서 파일명을 직접 확인했습니다. " + reason;
+                hits.Add(new TitleSearchHit(
+                    name,
+                    path,
+                    isDirectory,
+                    modifiedLocal,
+                    score,
+                    Math.Max(matchPercent, 94d),
+                    isExact || matchPercent >= 92d,
+                    reason,
+                    createdLocal));
+            }
+        }
+        catch (Exception exception) when (
+            exception is UnauthorizedAccessException or
+                IOException or
+                NotSupportedException or
+                ArgumentException)
+        {
+            // Existing indexes and the application catalog remain available.
+        }
+
+        return hits;
     }
 
     private static IReadOnlyList<string> BuildNaturalCandidateTerms(

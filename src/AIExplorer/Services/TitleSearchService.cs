@@ -567,12 +567,14 @@ public sealed class TitleSearchService
                 term.Alternatives.Any(alternative =>
                     ContainsAlternativeTerm(
                         normalizedTitle,
-                        alternative)));
+                        alternative,
+                        term.Original)));
             var literalPathMatches = _literalTerms.Count(term =>
                 term.Alternatives.Any(alternative =>
                     ContainsAlternativeTerm(
                         normalizedParentPath,
-                        alternative)));
+                        alternative,
+                        term.Original)));
             var hasLiteralDirectMatch =
                 literalTitleMatches + literalPathMatches > 0;
             var matchedAttributePredicates = new List<string>();
@@ -715,7 +717,8 @@ public sealed class TitleSearchService
                     term.Alternatives.Any(alternative =>
                         ContainsAlternativeTerm(
                             normalizedTitle,
-                            alternative)))
+                            alternative,
+                            term.Original)))
                 .Select(term => term.Original)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var pathMatchedTerms = _terms
@@ -723,7 +726,8 @@ public sealed class TitleSearchService
                     term.Alternatives.Any(alternative =>
                         ContainsAlternativeTerm(
                             normalizedParentPath,
-                            alternative)))
+                            alternative,
+                            term.Original)))
                 .Select(term => term.Original)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var matchedTerms = titleMatchedTerms
@@ -831,7 +835,8 @@ public sealed class TitleSearchService
 
         private static bool ContainsAlternativeTerm(
             string normalizedTitle,
-            string alternative)
+            string alternative,
+            string originalTerm)
         {
             if (alternative.Any(char.IsWhiteSpace))
             {
@@ -845,8 +850,11 @@ public sealed class TitleSearchService
                         >= '0' and <= '9'))
             {
                 return ContainsWholeWord(
-                    normalizedTitle,
-                    alternative);
+                           normalizedTitle,
+                           alternative) ||
+                       KoreanEnglishPhoneticMatcher.IsMatch(
+                           normalizedTitle,
+                           originalTerm);
             }
 
             return normalizedTitle.Contains(

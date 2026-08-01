@@ -680,12 +680,12 @@ public sealed class VisualIndexService
                         snapshot.Documents.Count,
                         document.DirectoryPath,
                         SearchPhase.VisualIndexing));
-                    if (intent is null)
-                    {
-                        await Task.Delay(
-                            TimeSpan.FromMilliseconds(35),
-                            cancellationToken);
-                    }
+                    // Yield between model runs so WPF input/rendering is not
+                    // starved even when ONNX falls back to the CPU.
+                    await Task.Delay(
+                        TimeSpan.FromMilliseconds(
+                            intent is null ? 35 : 15),
+                        cancellationToken);
                 }
             }
             catch (OperationCanceledException)

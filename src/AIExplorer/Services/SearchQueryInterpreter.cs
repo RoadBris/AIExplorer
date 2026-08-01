@@ -313,15 +313,20 @@ public static partial class SearchQueryInterpreter
 
     private static IReadOnlyList<string> ExpandTerm(string token)
     {
+        IReadOnlyList<string> expanded = [token];
         foreach (var group in SemanticGroups)
         {
             if (group.Contains(token, StringComparer.OrdinalIgnoreCase))
             {
-                return group;
+                expanded = group;
+                break;
             }
         }
 
-        return [token];
+        return expanded
+            .Concat(KoreanEnglishPhoneticMatcher.BuildAliases(token))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static IReadOnlyList<string> ExpandContentEvidenceTerm(
