@@ -1,0 +1,112 @@
+﻿<Window x:Class="AIExplorer.Dialogs.NetworkLocationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="네트워크 위치 추가"
+        Width="620"
+        MinWidth="520"
+        MinHeight="430"
+        SizeToContent="Height"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  HorizontalContentAlignment="Stretch">
+        <Grid Margin="26" MinWidth="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="네트워크 위치 추가"
+                       FontSize="20"
+                       FontWeight="SemiBold" />
+            <TextBlock Grid.Row="1"
+                       Text="NAS·공유 폴더를 등록합니다."
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,6,0,18" />
+
+            <TextBlock Grid.Row="2"
+                       Text="표시 이름"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,6" />
+            <TextBox x:Name="NameTextBox"
+                     Grid.Row="3"
+                     MinHeight="42"
+                     HorizontalAlignment="Stretch"
+                     Margin="0,0,0,16" />
+
+            <Grid Grid.Row="4" MinWidth="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="네트워크 경로"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,6" />
+                <Grid Grid.Row="1" MinWidth="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="0" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="PathTextBox"
+                             Grid.Column="0"
+                             MinWidth="0"
+                             MinHeight="42"
+                             HorizontalAlignment="Stretch"
+                             ToolTip="예: 192.168.0.10, \\NAS, \\192.168.0.10\자료실 또는 Z:\"
+                             TextChanged="PathTextBox_TextChanged" />
+                    <Button x:Name="TestConnectionButton"
+                            Grid.Column="1"
+                            Content="연결 확인"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            MinWidth="96"
+                            Margin="8,0,0,0"
+                            Click="TestConnectionButton_Click" />
+                </Grid>
+                <TextBlock Grid.Row="2"
+                           Text="예: \\NAS\자료실 또는 Z:\"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="2,7,0,0" />
+            </Grid>
+
+            <Border Grid.Row="5"
+                    Background="{StaticResource SurfaceMutedBrush}"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="11,9"
+                    Margin="0,16,0,0">
+                <TextBlock x:Name="ConnectionStatusText"
+                           Text="주소 입력 후 연결을 확인하세요."
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <StackPanel Grid.Row="6"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="0,22,0,0">
+                <Button Content="취소"
+                        Style="{StaticResource SecondaryButtonStyle}"
+                        Width="90"
+                        Margin="0,0,8,0"
+                        IsCancel="True" />
+                <Button Content="추가"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Width="90"
+                        IsDefault="True"
+                        Click="AddButton_Click" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Window>

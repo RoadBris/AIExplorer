@@ -1,0 +1,83 @@
+<Window x:Class="AIExplorer.Dialogs.SearchIndexChoiceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="검색 색인 준비"
+        Width="590"
+        Height="390"
+        MinWidth="520"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="검색 색인이 없습니다"
+                   FontSize="20"
+                   FontWeight="SemiBold" />
+        <TextBlock Grid.Row="1"
+                   Text="일부 내용 결과가 빠집니다."
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   TextWrapping="Wrap"
+                   Margin="0,8,0,16" />
+
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceMutedBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="15">
+            <StackPanel>
+                <TextBlock x:Name="ReadinessSummaryText"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap" />
+                <TextBlock x:Name="ReadinessCountText"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="0,7,0,0" />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="3" Margin="0,18,0,0">
+            <TextBlock Text="먼저 색인"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="전체 색인 후 검색 · 첫 실행은 느림"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,12" />
+            <TextBlock Text="일단 검색"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="파일명·경로와 기존 색인만 사용"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,22,0,0">
+            <Button Content="취소"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Width="86"
+                    Margin="0,0,8,0"
+                    IsCancel="True" />
+            <Button Content="일단 검색"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Width="104"
+                    Margin="0,0,8,0"
+                    Click="SearchNowButton_Click" />
+            <Button Content="먼저 색인"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="104"
+                    IsDefault="True"
+                    Click="IndexFirstButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

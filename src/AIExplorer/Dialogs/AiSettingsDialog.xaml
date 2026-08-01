@@ -1,0 +1,147 @@
+<Window x:Class="AIExplorer.Dialogs.AiSettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AI 탐색기 설정"
+        Width="680"
+        Height="590"
+        MinHeight="540"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Loaded="Window_Loaded">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="AI 탐색기 설정"
+                   FontSize="20"
+                   FontWeight="SemiBold" />
+        <TextBlock Grid.Row="1"
+                   Text="검색과 저장 위치를 관리합니다."
+                   Foreground="{StaticResource TextSecondaryBrush}"
+                   Margin="0,6,0,18" />
+
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,8,0">
+                <Border Style="{StaticResource SurfaceCardStyle}"
+                        Padding="18">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="고정 AI 검색 구성"
+                                       FontWeight="SemiBold"
+                                       FontSize="15" />
+                            <TextBlock Text="AI 구성은 앱 버전에 고정됩니다."
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,7,12,0" />
+                        </StackPanel>
+                        <Border Grid.Column="1"
+                                Background="{StaticResource AccentSoftBrush}"
+                                CornerRadius="10"
+                                Padding="9,5"
+                                VerticalAlignment="Top">
+                            <TextBlock x:Name="InstallStatusText"
+                                       Foreground="{StaticResource AccentBrush}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Border Background="{StaticResource SurfaceMutedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16"
+                        Margin="0,14,0,0">
+                    <StackPanel>
+                        <TextBlock Text="백그라운드 동작"
+                                   FontWeight="SemiBold"
+                                   FontSize="14" />
+                        <CheckBox x:Name="UseSystemTrayBackgroundCheckBox"
+                                  Content="닫을 때 트레이에서 색인 계속"
+                                  Margin="0,12,0,0" />
+                        <TextBlock Text="끄면 프로그램을 완전히 종료합니다."
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="24,7,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <Border Background="{StaticResource SurfaceMutedBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16"
+                        Margin="0,14,0,0">
+                    <StackPanel>
+                        <TextBlock Text="저장 위치"
+                                   FontWeight="SemiBold"
+                                   FontSize="14" />
+                        <TextBlock Text="설정과 검색 색인의 저장 위치입니다."
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,6,0,0" />
+                        <TextBox x:Name="StoragePathTextBox"
+                                 IsReadOnly="True"
+                                 IsReadOnlyCaretVisible="True"
+                                 Margin="0,12,0,0"
+                                 ToolTip="{x:Null}" />
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="CurrentStorageSizeText"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="1"
+                                    Content="폴더 열기"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Width="96"
+                                    Margin="8,0,0,0"
+                                    Click="OpenStorageButton_Click" />
+                            <Button Grid.Column="2"
+                                    Content="위치 변경"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Width="96"
+                                    Margin="8,0,0,0"
+                                    Click="ChangeStorageButton_Click" />
+                        </Grid>
+                        <TextBlock Text="복사 후 재시작 · 기존 데이터 유지"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,20,0,0">
+            <Button Content="취소"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    Width="90"
+                    Margin="0,0,8,0"
+                    IsCancel="True" />
+            <Button Content="저장"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    Width="100"
+                    IsDefault="True"
+                    Click="SaveButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

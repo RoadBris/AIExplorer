@@ -1,0 +1,11 @@
+bin/
+obj/
+*_wpftmp.csproj
+.vs/
+dist/
+artifacts/
+_AIExplorer_Data/
+*.user
+*.suo
+*.nupkg
+TestResults/
