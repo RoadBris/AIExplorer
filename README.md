@@ -1,320 +1,218 @@
-﻿# AI 탐색기
+# AI Explorer
 
-윈도우 탐색기의 익숙한 사용법에 완전 로컬 검색을 결합한 Windows 전용 파일
-관리자입니다. 파일명과 문서 본문은 물론 이미지·PDF의 글자와 화면 내용도
-검색합니다. **v0.82.4 배포 패키지**는 Qwen3 자연어 해석 모델, Multilingual E5 Base
-문서 검색 모델, SigLIP 2 Base 시각 검색 모델과 WD ViT 캐릭터 태거를 함께 넣습니다. 시각 모델은 DirectML 내장그래픽을 우선 사용하고
-호환되지 않는 PC에서는 CPU로 자동 전환하므로 첫 실행부터 오프라인 AI 검색을
-사용할 수 있습니다.
+This is a Windows-exclusive file manager that combines the familiar usage of Windows Explorer with completely local search. It searches not only file names and document contents, but also text in images and PDFs, as well as screen contents. The **v0.82.4 deployment package** includes the Qwen3 natural language interpretation model, the Multilingual E5 Base document search model, the SigLIP 2 Base visual search model, and the WD ViT character tagger. The visual model prioritizes the DirectML integrated graphics and automatically switches to the CPU on incompatible PCs, allowing you to use offline AI search from the very first launch.
 
-## 검색 방식
+## Search Method
 
-탐색 트리, 파일 목록, 통합 검색, 빠른 이름·경로 검색을 가로로 넓게 배치하고 두 검색
-결과를 처음부터 동시에 표시합니다. `빠른 이름·경로`는 완료된 메모리 색인의 문자
-포스팅을 사용해 한 글자 입력부터 즉시 갱신하며, 자연어 이름 검색에서는 실제 파일명·
-폴더명이 맞는 항목만 표시합니다. `통합 검색`은 문서 본문, 엑셀 시트·셀, OCR, E5,
-SigLIP 근거를 별도로 결합합니다.
+The navigation tree, file list, unified search, and quick name/path search are laid out horizontally, and the two search results are displayed simultaneously from the beginning. `Quick Name/Path` uses the character postings of the completed memory index to update immediately starting from a single character input, and the natural language name search only displays items that match actual file or folder names. `Unified Search` separately combines evidence from document text, Excel sheets/cells, OCR, E5, and SigLIP.
 
-검색 결과는 다음 근거를 함께 계산하되, 사용자가 파일을 찾는 일반적인 흐름에
-맞춰 파일명과 상위 폴더의 직접 단서를 본문·AI 유사도보다 먼저 정렬합니다.
+The search results calculate the following evidence together, but in accordance with the typical flow of a user finding a file, direct clues from the file name and parent folder are sorted before the text/AI similarity.
 
-1. 파일 형식, 확장자, 이름, 상위 폴더, 수정 시기
-2. TXT·소스 코드·Office 문서 본문과 XLS·XLSX·XLSM·XLSB 내부 셀의 직접 단어 일치
-3. 이미지와 PDF 표본 페이지에서 Windows 로컬 OCR로 읽은 글자
-4. 파일명·상대 경로·추출 문서를 변환한 Multilingual E5 의미 후보
-5. 전체 화면과 중앙 세부 화면을 따로 저장한 SigLIP 2 이미지·PDF 시각 후보
-6. 애니·일러스트 이미지에서 한 번 추출해 저장한 WD 캐릭터·일반·등급 태그
+1. File format, extension, name, parent folder, and modification time
+2. Direct word matches in TXT, source code, and Office document texts, as well as internal cells of XLS, XLSX, XLSM, and XLSB
+3. Text read by Windows local OCR from images and sample PDF pages
+4. Multilingual E5 semantic candidates converted from file names, relative paths, and extracted documents
+5. SigLIP 2 image/PDF visual candidates where the full screen and central detailed screen are saved separately
+6. WD character, general, and rating tags extracted and saved once from anime/illustration images
 
-본문을 읽을 수 없는 특수 파일도 파일명, 확장자 의미, 가까운 상위 폴더를
-메타데이터 설명으로 구성해 E5 의미 색인에 포함합니다. 키워드·본문·E5가 각각
-찾은 후보는 순위 결합으로 합치며, 직접 이름 일치는 최종 안전 우선순위로
-보호합니다.
+Special files whose text cannot be read are also included in the E5 semantic index by composing the file name, extension meaning, and nearby parent folders as metadata descriptions. Candidates found separately by keywords, text, and E5 are merged through rank combination, and direct name matches are protected as the final safety priority.
 
-검색 문장에 결과 우선순위도 함께 적을 수 있습니다. 예를 들어
-`AWS SSH 키를 찾고 최근에 만들어진 파일일수록 더 위로`는 검색 대상과
-`생성일 최신 순 · 강하게` 지시를 분리해 해석합니다. 생성일·수정일, 파일명,
-경로, 형식, 본문, 의미 유사도와 파일 크기를 `조금`, `강하게`, `최우선` 또는
-퍼센트로 지정할 수 있습니다. 최신 파일이라는 이유만으로 관련 없는 항목이
-상위에 오르지 않도록 직접 이름·결합 근거 보호 단계 안에서 가중치를 적용하며,
-해석한 기준과 적용 이유를 화면에 표시합니다.
+You can also include result priority instructions within the search sentence. For example, `Find the AWS SSH key, and put more recently created files higher up` separates and interprets the search target and the `sort by latest creation date strongly` instruction. Creation/modification dates, file name, path, format, text, semantic similarity, and file size can be specified as `a little`, `strongly`, `top priority`, or as a percentage. To prevent irrelevant items from rising to the top just because they are the newest files, weights are applied within the direct name/combined evidence protection stage, and the interpreted criteria and reasons for application are displayed on the screen.
 
-검색이 끝난 뒤에는 `결과 안에서 다시 찾기`에 자연어 조건을 입력해 두 결과 탭의
-현재 후보만 다시 좁힐 수 있습니다. `한글이 들어간 파일만 찾아줘`는 `한글`이라는
-단어를 찾는 대신 파일명과 저장된 본문·OCR·엑셀 셀에 실제 한글 문자가 있는지
-확인합니다. `내용에 한글이 포함된 파일`, `파일명에 한글이 들어간 파일`처럼
-검사 범위를 말할 수도 있으며, `한글 파일`은 HWP·HWPX 형식 요청으로 구분합니다.
-`한글로만 된 파일`은 확장자를 제외한 파일명에 한글만 있는 파일로 해석합니다.
-공백·괄호·밑줄은 허용하지만 숫자나 영문이 섞인 이름은 제외합니다.
-프로그램이 이해한 조건은 입력창 아래에 표시되고 `전체 결과로`를 누르면 이전
-결과와 순서가 그대로 복원됩니다.
+After the search is finished, you can enter natural language conditions in `Find again in results` to narrow down only the current candidates in the two result tabs. `Find only files containing Korean` checks whether actual Korean characters exist in the file name and the saved text/OCR/Excel cells, instead of searching for the word `Korean`. You can also specify the inspection scope, such as `Files with Korean in the content` or `Files with Korean in the file name`, and `Korean file` is distinguished as a request for HWP/HWPX formats. `Files completely in Korean` is interpreted as files containing only Korean in the file name, excluding the extension. Spaces, parentheses, and underscores are allowed, but names mixed with numbers or English are excluded. The conditions understood by the program are displayed below the input box, and clicking `To all results` restores the previous results and their exact order.
 
-검색 결과 상단의 정렬 메뉴는 통합 결과와 빠른 이름·경로 결과에 동시에 적용됩니다.
-기본 `일치도순` 외에 드라이브와 최상위 폴더부터 묶는 경로순, 가나다순, 수정 날짜
-최신순을 선택할 수 있습니다. 다른 정렬을 사용해도 원래 일치도 순서는 보존되므로
-검색을 다시 실행하지 않고 즉시 되돌릴 수 있습니다.
+The sort menu at the top of the search results applies to both the unified results and the quick name/path results simultaneously. In addition to the default `By relevance`, you can sort by path (grouping from drives and top-level folders), alphabetical order, and latest modification date. Even if you use a different sort, the original relevance order is preserved, so you can immediately revert without running the search again.
 
-`mullvad 로그인 코드가 담긴 파일`처럼 파일명과 관계없는 내용도 TXT나 지원
-문서 본문에서 찾습니다. AI 모델을 설치하면 `개인정보 보호망 접속 자격 자료`와
-`WireGuard tunnel account token`처럼 표현과 언어가 달라도 의미 유사도를
-검색 순위에 반영합니다. `노을 사진`, `강아지가 있는 이미지`처럼 파일명에
-단서가 없는 사진도 픽셀 기반 시각 AI 후보로 찾습니다.
+Contents unrelated to the file name, such as `file containing mullvad login code`, are also found in TXT or supported document texts. By installing AI models, semantic similarities are reflected in the search rankings even if the expressions and languages differ, such as `privacy network access credentials` and `WireGuard tunnel account token`. Photos without clues in the file name, like `sunset picture` or `image with a dog`, are also found as pixel-based visual AI candidates.
 
-캐릭터명과 함께 이미지를 요청하면 일반 사진과 별도의 여러 캐릭터 문구로 비교하고,
-소프트웨어 UI·대시보드·대화상자에 더 가까운 화면은 감점합니다. 픽셀 유사도만으로
-캐릭터 신원을 단정하지 않으며, 파일명·폴더명 또는 WD 캐릭터 태그로 신원이 확인된
-이미지만 결과에 포함합니다. 이 때문에 무관한 배너가 단지 시각 점수가 높다는 이유로
-캐릭터 검색 상단에 표시되지 않습니다.
-`라피`→`rapi`, `아스나`→`asuna`처럼 한글 고유명의 영문 음역도 시각 문구에 함께
-넣습니다. 이미지 결과 카드는 원본 비율의 축소 미리보기를 백그라운드에서 순차
-표시합니다.
+When an image is requested along with a character name, it is compared against multiple character phrases distinct from general photos, and screens closer to software UIs, dashboards, or dialog boxes are penalized. Character identity is not concluded solely by pixel similarity, and only images whose identity is verified by the file name, folder name, or WD character tags are included in the results. Because of this, irrelevant banners are not displayed at the top of character searches just because they have high visual scores.
+English transliterations of Korean proper nouns, such as `라피`→`rapi` or `아스나`→`asuna`, are also included in the visual phrases. The image result cards sequentially display thumbnail previews in their original proportions in the background.
 
-엑셀 파일은 행 단위로 읽어 시트명과 셀 값을 최대 50만 셀까지 로컬에서
-색인합니다. 예를 들어 파일명이 `계정 목록.xlsx`뿐이어도 검색한 장비명이 셀에
-있다면 파일명 단서와 셀 단서를 합쳐 `이름·내용 일치`로 우선 표시합니다.
-구형 `.xls`, 일반 `.xlsx`, 매크로 `.xlsm`, 바이너리 `.xlsb`를 지원합니다.
+Excel files are read row by row, and sheet names and cell values are indexed locally up to 500,000 cells. For example, even if the file name is only `Account List.xlsx`, if the searched equipment name is in a cell, the file name clue and cell clue are combined and prioritized as a `Name/Content Match`. Legacy `.xls`, standard `.xlsx`, macro `.xlsm`, and binary `.xlsb` formats are supported.
 
-`mullvad 로그인 관련 파일`처럼 우회적으로 물어도 `로그인`과
-`account/계정/credential`의 관계를 함께 계산합니다. 파일명에서 검색 의도가
-모두 확인된 결과는 설치 폴더 안의 본문 단어 일치 결과보다 우선합니다. 개별 AI
-추론이 실패하더라도 이미 계산한 이름·경로·본문 결과는 빈 화면 대신 보존됩니다.
-`네트워크 계정 관련 문서`처럼 문맥 단어가 함께 있어도 `IT팀_계정관리`와
-`계정관리문서`의 직접적인 한국어 복합명사 단서를 먼저 보여줍니다. 일반적인
-`문서` 요청에는 PDF·텍스트뿐 아니라 스프레드시트와 프레젠테이션도 포함합니다.
+Even if asked indirectly, such as `files related to mullvad login`, the relationship between `login` and `account/계정/credential` is calculated together. Results where the search intent is fully confirmed in the file name take precedence over text word match results inside the installation folder. Even if individual AI inferences fail, the already calculated name, path, and text results are preserved instead of showing a blank screen. Even if context words are present together, like `network account related documents`, direct Korean compound noun clues like `ITTeam_AccountManagement` and `AccountManagementDocument` are shown first. General `document` requests include spreadsheets and presentations as well as PDFs and text.
 
-## 현재 구현된 기능
+## Currently Implemented Features
 
-- `내 PC`에서 로컬·이동식 드라이브와 현재 연결된 네트워크 서버·공유 폴더 탐색
-- 현재 Windows SMB 세션에서 확인되는 UNC 공유 폴더 자동 감지
-- 빠른 접근 아래의 `즐겨찾기` 트리에 폴더·공유 폴더·`.lnk`·`.url` 바로가기를 드래그해 등록
-- 좌측 하단의 드래그 안내, 폴더 우클릭 `즐겨찾기에 추가`, 즐겨찾기 내부 드래그 순서 변경
-- 즐겨찾기 우클릭 이름 변경·제거와 설정 파일 영구 저장
-- 즐겨찾기 등록 직후 해당 폴더를 일반 드라이브보다 먼저 저부하 자동 색인
-- 옵션에 따라 닫기 버튼을 시스템 트레이 전환 또는 완전 종료로 선택
-- 트레이 아이콘 더블 클릭으로 다시 열기, 우클릭으로 색인 일시 중지·재개 또는 완전 종료
-- 별도 네트워크 트리 없이 `내 PC`·주소 입력·즐겨찾기로 네트워크 공유 접근
-- `192.168.0.10` 또는 `\\NAS`처럼 서버 최상위 주소만 입력해 일반 공유 폴더 목록 열기
-- 끊긴 네트워크 드라이브의 Windows 재연결·자격 증명 창 및 연결 확인
-- 뒤로, 앞으로, 상위 폴더, 주소 입력, 새로고침
-- 마우스 측면 뒤로·앞으로 버튼과 키보드 BrowserBack·BrowserForward 지원
-- `Alt+←/→/↑`, `Backspace`, `Ctrl+L`·`Alt+D`, `Ctrl+F`·`Ctrl+E`·`F3`, `F5`, `Ctrl+W` 탐색기식 단축키
-- 파일과 폴더 열기, 새 폴더, 복사, 이동, 이름 변경, 휴지통 삭제
-- AI 탐색기가 새로 실행한 사진·문서 뷰어를 기록하고 앱 종료 시 함께 정리
-- 드래그앤드롭 복사와 `Shift` 드래그앤드롭 이동
-- Windows Shell 원본 폴더·파일 형식·드라이브 아이콘
-- 이름, 날짜, 유형, 크기 정렬
-- 현재 폴더와 하위 폴더, 현재 드라이브, 즐겨찾기 및 모든 위치 검색 범위
-- 기본 검색 범위 `현재 폴더와 하위 폴더`
-- 숨김·시스템 항목과 이름이 `~`로 시작하는 임시 파일·폴더를 탐색 및 모든 검색 색인에서 제외
-- 3D 모델·CAD·문서·이미지·영상 등 파일 유형 의도 분류
-- `.ppk`, `.pem`처럼 카탈로그에 없는 확장자도 점 표기·파일명 메타데이터로 검색
-- `aws ssh키`처럼 한글·영문이 섞인 자연어를 `key`·`ppk`·`pem` 파일명 의미와 연결
-- `AWS 키`처럼 한 글자 핵심 명사도 조사 제거 후 검색 의도로 유지
-- 모든 일반 파일의 이름·확장자 의미·상위 경로를 내용 비공개 메타데이터 의미 색인에 포함
-- 약한 후보를 조기에 버리지 않고 파일명·경로·형식·본문·E5 순위를 결합해 재정렬
-- 자연어로 생성일·수정일·이름·경로·형식·본문·의미·크기 가중치와 강도·퍼센트 지정
-- 새 검색은 결정론적 해석기로만 실행해 LLM이 단어·확장자·파일/폴더 제한을 추가하지 못함
-- 결과 안에서 다시 찾기의 LLM 설명도 사용자가 직접 입력한 검증 조건을 변경하지 못함
-- 현재 두 결과창 안에서만 자연어로 다시 찾고 `전체 결과로` 원상 복원
-- 한글·영문·숫자 포함 여부를 파일명·본문·OCR·엑셀 셀 조건으로 해석
-- `한글로만 된 파일`과 유사 표현을 확장자 제외 파일명 전용 조건으로 해석
-- `한글 파일`과 `한글이 들어간 파일`을 HWP 형식·문자 포함 조건으로 구분
-- 결과 내 재검색을 한 줄 조건 바로 압축해 결과 목록 높이 확보
-- 탐색 트리·파일 목록·통합 결과·빠른 이름/경로 결과를 가로 분할하고 너비를 자동 저장
-- 통합 결과와 빠른 이름·경로 결과를 동시에 표시하며 좁은 창에서만 선택 보기로 전환
-- 생성일과 수정일을 별도 색인하고 관련도 보호 단계 안에서 사용자 우선순위 적용
-- 오늘·어제·지난주·지난달·올해 등 수정 시기 조건 해석
-- 범위별 메타데이터·본문·의미 벡터 색인의 로컬 저장과 재사용
-- JPG·PNG·BMP·GIF·TIFF·WebP·HEIC 이미지 OCR 및 픽셀 의미 검색
-- PDF 첫쪽·가운데쪽·마지막쪽 표본의 OCR 및 화면 의미 검색
-- 앱 실행 후 모든 준비된 위치를 순차 확인하는 저부하 자동 색인
-- 결과별 `정확 일치`, `이름·내용 일치`, `본문 일치`, `경로 일치`, `AI 후보`, `시각 후보` 근거 표시
-- 이미지 검색 결과 카드의 저부하 비동기 미리보기
-- 검색 결과의 픽셀 단위 가상화 스크롤과 미리보기 공간 사전 확보
-- 캐릭터명 이미지 검색의 파일명·폴더명·WD 태그 신원 검증과 UI 스크린샷 제외
-- 검색 후 상위 50개를 E5 전체 768차원으로 다시 정렬하는 선택형 `정밀 재평가`
-- 사용자 바탕 화면·문서·다운로드를 우선하는 저사양 순차 색인
-- 10만 항목 메타데이터 상한 뒤의 파일명·파일 형식 정밀 재탐색
-- 메타데이터 상한 밖의 이미지·PDF도 이름 일치 없이 시각 AI 후보로 수집
-- 상위 폴더 검색도 자식 폴더별로 이미지 후보를 고르게 순환 분석
-- 검색당 최대 500개 결과, 의미 AI 후보 최대 240개, 시각 AI 후보 최대 500개
-- 독립 제목 검색과 통합 검색 결과를 하단 탭에서 즉시 전환
-- 단일 이름 검색은 제목 색인 결과를 두 결과창에 즉시 표시하고 AI 추론을 생략
-- 검색 중에는 완료된 색인만 읽고, 부족한 색인 생성은 검색과 분리해 유휴 시간에 수행
-- 본문이 없는 3D·CAD·압축·이미지·영상 파일도 파일명과 상대 경로를 E5 의미 색인에 포함
-- 점진 검색 중 중지해도 이미 찾은 결과를 유지하고 미완료 색인은 다음 유휴 시간에 재개
-- 검색 취소, 접근 거부, 손상 문서, 끊긴 네트워크 예외 처리
-- 설정에서 실제 데이터 경로·사용량을 확인하고 저장 위치를 안전하게 변경
-- 설정과 색인을 EXE 옆 `_AIExplorer_Data`에 저장
-- 쓰기 금지 위치에서는 `%LOCALAPPDATA%\AIExplorer`로 자동 전환
+- Browse local/removable drives and currently connected network servers/shared folders from `This PC`.
+- Automatic detection of UNC shared folders confirmed in the current Windows SMB session.
+- Register folders, shared folders, `.lnk`, and `.url` shortcuts by dragging them into the `Favorites` tree under Quick Access.
+- Drag guidance at the bottom left, folder right-click `Add to Favorites`, and drag-to-reorder inside favorites.
+- Favorites right-click rename/remove, and permanent saving to the configuration file.
+- Immediately after registering a favorite, the folder undergoes low-load automatic indexing before general drives.
+- Choose whether the close button switches to the system tray or completely exits, depending on options.
+- Double-click the tray icon to reopen, right-click to pause/resume indexing or exit completely.
+- Access network shares via `This PC`, address input, or favorites without a separate network tree.
+- Open general shared folder lists by entering only the top-level server address, like `192.168.0.10` or `\\NAS`.
+- Windows reconnection/credential prompt and connection confirmation for disconnected network drives.
+- Back, forward, up one folder, address input, and refresh.
+- Support for mouse side back/forward buttons and keyboard BrowserBack/BrowserForward.
+- Explorer-style shortcut keys: `Alt+←/→/↑`, `Backspace`, `Ctrl+L` / `Alt+D`, `Ctrl+F` / `Ctrl+E` / `F3`, `F5`, `Ctrl+W`.
+- Open files and folders, new folder, copy, move, rename, and delete to Recycle Bin.
+- Record photo/document viewers newly launched by AI Explorer and clean them up together when the app closes.
+- Drag-and-drop copy and `Shift` drag-and-drop move.
+- Windows Shell native folder, file format, and drive icons.
+- Sort by name, date, type, and size.
+- Search scopes for current folder and subfolders, current drive, favorites, and all locations.
+- Default search scope is `Current folder and subfolders`.
+- Exclude hidden/system items and temporary files/folders starting with `~` from navigation and all search indexing.
+- File type intent classification for 3D models, CAD, documents, images, video, etc.
+- Search uncatalogued extensions like `.ppk` or `.pem` via dot notation and file name metadata.
+- Link natural language mixed with Korean and English like `aws ssh키` to the file name semantics of `key`, `ppk`, and `pem`.
+- Maintain single-character core nouns like `AWS 키` as search intent after removing particles.
+- Include the names, extension meanings, and parent paths of all regular files in the non-public metadata semantic index.
+- Re-rank by combining file name, path, format, text, and E5 rankings without discarding weak candidates early.
+- Specify weights, strengths, and percentages in natural language for creation date, modification date, name, path, format, text, semantics, and size.
+- New searches are executed only by a deterministic interpreter, preventing the LLM from adding word, extension, or file/folder restrictions.
+- The LLM explanation in 'Find again in results' also cannot change the verification conditions directly entered by the user.
+- Find again via natural language strictly within the two current result panes and revert exactly to `To all results`.
+- Interpret the inclusion of Korean, English, or numbers as conditions for file names, text, OCR, and Excel cells.
+- Interpret `Files completely in Korean` and similar expressions as a dedicated condition for file names excluding the extension.
+- Distinguish between `Korean file` and `Files containing Korean` as conditions for HWP format versus text inclusion.
+- Immediately compress the re-search within results into a single-line condition to secure height for the result list.
+- Horizontally split the navigation tree, file list, unified results, and quick name/path results, and automatically save the widths.
+- Display unified results and quick name/path results simultaneously, switching to a selectable view only in narrow windows.
+- Index creation and modification dates separately, applying user priorities within the relevance protection stage.
+- Interpret modification time conditions such as today, yesterday, last week, last month, and this year.
+- Local storage and reuse of scoped metadata, text, and semantic vector indices.
+- OCR and pixel semantic search for JPG, PNG, BMP, GIF, TIFF, WebP, and HEIC images.
+- OCR and screen semantic search for first, middle, and last page samples of PDFs.
+- Low-load automatic indexing that sequentially checks all ready locations after launching the app.
+- Display evidence for each result: `Exact Match`, `Name/Content Match`, `Text Match`, `Path Match`, `AI Candidate`, and `Visual Candidate`.
+- Low-load asynchronous previews of image search result cards.
+- Pixel-level virtualized scrolling of search results and pre-allocation of preview space.
+- File name, folder name, and WD tag identity verification for character name image searches, excluding UI screenshots.
+- Optional `Precision Re-evaluation` that re-sorts the top 50 results post-search using the full 768 dimensions of E5.
+- Low-spec sequential indexing that prioritizes the user's Desktop, Documents, and Downloads.
+- Precision file name and format re-search beyond the 100,000-item metadata limit.
+- Collect images and PDFs outside the metadata limit as visual AI candidates even without name matches.
+- Parent folder searches also evenly cyclically analyze image candidates by child folder.
+- Maximum of 500 results per search, up to 240 semantic AI candidates, and up to 500 visual AI candidates.
+- Immediately toggle between independent title searches and unified search results via bottom tabs.
+- Single name searches display title index results immediately in both panes and skip AI inference.
+- Read only completed indices during searches, and perform missing index generation during idle times separate from the search.
+- Include file names and relative paths of 3D, CAD, archive, image, and video files without text in the E5 semantic index.
+- Retain already found results even if stopped during an incremental search, and resume uncompleted indexing during the next idle time.
+- Exception handling for search cancellation, access denied, corrupted documents, and disconnected networks.
+- Check actual data path and usage in settings and safely change the save location.
+- Save settings and indices in `_AIExplorer_Data` next to the EXE.
+- Automatically switch to `%LOCALAPPDATA%\AIExplorer` in write-protected locations.
 
-## 본문 추출 형식
+## Text Extraction Formats
 
-- 일반 텍스트: TXT, Markdown, CSV, TSV, LOG, JSON, XML, YAML, INI
-- 소스 코드: C#, XAML, JavaScript, TypeScript, Python, Java, C/C++,
-  Go, Rust, PHP, HTML, CSS, SQL, PowerShell, BAT, CMD
-- 문서 컨테이너: DOCX, PPTX, XLSX, HWPX, ODT, ODS, ODP
-- 이미지 OCR: JPG, JPEG, PNG, BMP, GIF, TIFF, WebP, HEIC
-- PDF: 최대 3개 표본 페이지를 렌더링해 OCR
+- General Text: TXT, Markdown, CSV, TSV, LOG, JSON, XML, YAML, INI
+- Source Code: C#, XAML, JavaScript, TypeScript, Python, Java, C/C++, Go, Rust, PHP, HTML, CSS, SQL, PowerShell, BAT, CMD
+- Document Containers: DOCX, PPTX, XLSX, HWPX, ODT, ODS, ODP
+- Image OCR: JPG, JPEG, PNG, BMP, GIF, TIFF, WebP, HEIC
+- PDF: OCR by rendering up to 3 sample pages
 
-텍스트 파일은 앞 256KB, 추출 결과는 최대 12,000자를 저장합니다. 암호화된 문서,
-손상 문서, 32MB를 넘는 문서 컨테이너는 건너뜁니다. OCR은 해당 PC에 설치된
-Windows 언어팩을 사용하며 이미지 48MB, PDF 96MB를 넘으면 저사양 보호를 위해
-본문 OCR을 생략합니다. PDF 전체 페이지가 아니라 첫쪽·가운데쪽·마지막쪽을
-표본 분석하므로 페이지 단위 전체 검색은 아직 지원하지 않습니다.
+Text files save the first 256KB, and extraction results save up to 12,000 characters. Encrypted documents, corrupted documents, and document containers exceeding 32MB are skipped. OCR uses the Windows language packs installed on the PC, and to protect low-spec systems, text OCR is skipped if images exceed 48MB or PDFs exceed 96MB. Since it sample-analyzes the first, middle, and last pages rather than the entire PDF pages, full-page search per page is not yet supported.
 
-## 기본 포함 로컬 AI
+## Built-in Local AI
 
-`build_release.cmd`가 다음 구성 요소를 SHA-256으로 검증해 포터블 배포 폴더에
-포함합니다. 개발 실행처럼 번들 파일이 없는 경우에는 첫 실행에서 같은 구성
-요소를 한 번 내려받습니다.
+`build_release.cmd` verifies the following components with SHA-256 and includes them in the portable distribution folder. If bundle files are missing, such as during development execution, the same components are downloaded once upon the first run.
 
-- [Multilingual E5 Base](https://huggingface.co/intfloat/multilingual-e5-base)의
-  Q4_K_M GGUF 변환본(약 219MB)
-- [SigLIP 2 Base Patch16 224](https://huggingface.co/google/siglip2-base-patch16-224)의
-  INT8 ONNX 변환본과 SentencePiece 토크나이저(약 382MB)
-- [WD ViT Tagger v3](https://huggingface.co/SmilingWolf/wd-vit-tagger-v3)의
-  ONNX 모델과 고정 태그 사전(약 379MB)
-- [Qwen3 1.7B](https://huggingface.co/Qwen/Qwen3-1.7B)의
-  Q4_K_M GGUF 변환본(약 1.28GB)
-- [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html)
-  1.22.0 및 CPU 폴백
+- [Multilingual E5 Base](https://huggingface.co/intfloat/multilingual-e5-base) Q4_K_M GGUF conversion (approx. 219MB)
+- [SigLIP 2 Base Patch16 224](https://huggingface.co/google/siglip2-base-patch16-224) INT8 ONNX conversion and SentencePiece tokenizer (approx. 382MB)
+- [WD ViT Tagger v3](https://huggingface.co/SmilingWolf/wd-vit-tagger-v3) ONNX model and fixed tag dictionary (approx. 379MB)
+- [Qwen3 1.7B](https://huggingface.co/Qwen/Qwen3-1.7B) Q4_K_M GGUF conversion (approx. 1.28GB)
+- [ONNX Runtime DirectML](https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html) 1.22.0 and CPU fallback
 - [Microsoft.ML.Tokenizers](https://www.nuget.org/packages/Microsoft.ML.Tokenizers) 2.0.0
-- [llama.cpp](https://github.com/ggml-org/llama.cpp) Windows x64 CPU 실행기
+- [llama.cpp](https://github.com/ggml-org/llama.cpp) Windows x64 CPU executor
 
-전체 다운로드 예상치는 약 2.4GB이며 최초 설치나 자동 복구 중 최소 4GB의 여유
-공간을 확인합니다. E5 입력은 모델 권장 형식인 `query:`와 `passage:`를 구분해
-처리하고, 768차원 출력을 축소하지 않고 정규화해 저장합니다. 색인 파일은 각
-차원을 8비트로 양자화해 검색 시 메모리 사용량을 줄입니다.
+The total estimated download size is about 2.4GB, and at least 4GB of free space is checked during the initial installation or automatic recovery. E5 input is processed by separating `query:` and `passage:`, which is the recommended format for the model, and the 768-dimensional output is normalized and saved without reduction. The index file quantizes each dimension into 8 bits to reduce memory usage during searches.
 
-새 검색의 실행 조건은 결정론적 해석기가 확정합니다. Qwen3는 결과 안에서 다시
-찾기의 설명을 도울 수 있지만, `SearchPlan`이 새 단어·확장자·파일/폴더 제한·정렬을
-추가해 실행 조건을 바꿀 수 없습니다. 처리되는 문맥은 `127.0.0.1`의 인증된
-llama.cpp 서버 밖으로 나가지 않습니다.
+The execution conditions for a new search are finalized by the deterministic interpreter. Qwen3 can assist in explaining 'Find again in results', but it cannot alter execution conditions by adding new word, extension, file/folder restrictions, or sorting to the `SearchPlan`. The processed context does not leave the authenticated llama.cpp server at `127.0.0.1`.
 
-SigLIP 2는 다국어 이미지·텍스트 공통 공간을 사용합니다. 검색 문장의 원문과
-영어 시각 표현, 한글 고유명의 영문 음역을 여러 문구로 비교해 일반 사물·장면·
-사무 자료·일러스트 검색의 재현율을 높입니다. 세로·가로로 긴 이미지는 전체가
-보이는 흰 배경 프레임과 중앙 세부 프레임을 별도 벡터로 보존합니다. WD 태거는
-애니·일러스트로 판별된 이미지에서 캐릭터 이름과 외형 태그를 추출하며, 등급 태그는
-검색 근거로만 사용하고 결과를 숨기는 필터로 사용하지 않습니다. DirectML 세션이 생성되면 Intel·AMD
-내장그래픽을 우선 사용하고, 드라이버나 연산 호환 문제로 실패하면 같은 모델을
-CPU 세션으로 다시 열어 검색을 계속합니다.
+SigLIP 2 uses a common multilingual image/text space. It improves the recall rate of general objects, scenes, office materials, and illustration searches by comparing the original text of the search sentence, English visual expressions, and English transliterations of Korean proper nouns against multiple phrases. Vertically or horizontally long images are preserved as separate vectors: a white background frame showing the entirety, and a central detailed frame. The WD tagger extracts character names and appearance tags from images identified as anime/illustrations, and rating tags are used only as search evidence, not as filters to hide results. When a DirectML session is created, Intel/AMD integrated graphics are prioritized, and if it fails due to driver or computing compatibility issues, the same model is reopened as a CPU session to continue the search.
 
-모델과 실행기는 다음 위치에 저장됩니다.
+The models and executors are stored in the following locations:
 
 ```text
 _AIExplorer_Data\models\semantic
 _AIExplorer_Data\models\visual
+
 ```
 
-앱을 켜면 즐겨찾기 폴더를 일반 드라이브보다 먼저 확인한 뒤 준비된 위치를
-백그라운드에서 순차 확인해 메타데이터·본문·OCR 색인과 의미·시각 벡터를 조금씩
-준비합니다. 창의 닫기 버튼을 눌러도 시스템 트레이에서 계속 실행되며, 변경된
-파일을 놓치지 않도록 트레이 상태에서는 5분 간격으로 저부하 색인을 다시
-확인합니다. 사용자가 검색을 시작하면 자동 색인은 즉시 양보합니다. 전면 검색은 이미
-확보된 파일명·경로·본문·OCR·E5·SigLIP·WD 태그 색인을 한 번씩 읽고, 새 색인을
-만들기 위해 같은 검색을 반복하지 않습니다. 부족한 색인은 검색이 끝난 뒤 유휴
-백그라운드 작업에서 계속 준비합니다.
+When you turn on the app, it checks the favorites folder before general drives, then sequentially checks the prepared locations in the background, gradually preparing metadata, text, and OCR indices, as well as semantic and visual vectors. Even if you press the window's close button, it continues running in the system tray, and in this tray state, it rechecks low-load indexing every 5 minutes to avoid missing modified files. When the user starts a search, automatic indexing yields immediately. Foreground searches read the already secured file name, path, text, OCR, E5, SigLIP, and WD tag indices once, and do not repeat the same search to create new indices. Missing indices are continually prepared in idle background tasks after the search ends.
 
-검색 중 `중지`를 눌러도 지금까지 찾은 결과는 사라지지 않습니다. 1차 점진 분석에서
-끝내지 못한 파일은 프로그램이 유휴 상태가 되었을 때 이어서 색인하므로 다음 검색은
-더 빨라집니다. 빠른 첫 단계에서는 AI 모델을 실행하지 않고 기존 색인과 파일명·경로를
-우선 확인합니다. 저장된 AI 벡터는 새 파일 분석보다 먼저 검색하고, 활성 검색에서
-새로 만드는 본문·의미·시각 색인은 최대 4단계까지만 진행합니다. 남은 작업은
-유휴 시간으로 넘겨 입력과 탐색 반응성을 유지합니다.
-프로그램을 실제로 끝내려면 트레이 아이콘을 우클릭해 `완전히 종료`를 선택합니다.
-같은 메뉴에서 백그라운드 색인을 일시 중지하거나 다시 시작할 수 있습니다.
-손상되었거나 현재 디코딩할 수 없는 이미지·PDF는 실패 시각을 저장해 같은
-검색에서 반복 처리하지 않으며, 파일이 바뀌거나 24시간이 지나면 다시 시도합니다.
+Even if you press `Stop` during a search, the results found so far do not disappear. Files that could not be finished in the first incremental analysis are subsequently indexed when the program becomes idle, making the next search faster. In the fast first stage, it prioritizes existing indices and file names/paths without running AI models. Saved AI vectors are searched before analyzing new files, and the text, semantic, and visual indices newly created during an active search proceed up to a maximum of 4 stages. The remaining tasks are passed to idle time to maintain input and navigation responsiveness.
+To actually exit the program, right-click the tray icon and select `Exit completely`. From the same menu, you can pause or resume background indexing. Images or PDFs that are corrupted or currently undecodable save their failure time and are not reprocessed repeatedly in the same search, retrying when the file changes or after 24 hours have passed.
 
-기본 의미 색인은 E5의 전체 768차원을 8비트 벡터로 저장합니다. 검색 결과의
-`정밀 재평가`는 별도 대형 모델을 더 설치하지 않고 상위 50개를 압축하지 않은
-768차원 부동소수점 벡터로 다시 비교합니다. 본문 추출이 불가능한 파일도 파일명과
-상대 경로를 분석하며, 모델 실행기는 5분 동안 사용하지 않으면 메모리에서
-모델을 내립니다.
+The default semantic index saves the full 768 dimensions of E5 as an 8-bit vector. The `Precision Re-evaluation` of search results re-compares the top 50 as uncompressed 768-dimensional floating-point vectors without installing additional large models. It also analyzes the file names and relative paths of files from which text extraction is impossible, and the model executor unloads the model from memory if not used for 5 minutes.
 
-모델과 실행기를 다운로드할 때만 인터넷을 사용합니다. 파일 내용과 검색어는
-외부 서버로 보내지 않고 `127.0.0.1`에 임시로 띄운 인증된 로컬 실행기에서
-처리합니다.
+The internet is only used when downloading models and executors. File contents and search terms are not sent to external servers but are processed on a temporarily hosted, authenticated local executor at `127.0.0.1`.
 
-설정 화면에서는 AI 모델을 교체하거나 독립적으로 업그레이드할 수 없습니다. 모델,
-토크나이저, 검색 점수 기준은 앱 버전과 함께 고정되며, 누락되거나 손상된 구성 요소만
-앱이 같은 고정 번들로 자동 복구합니다.
+AI models cannot be replaced or upgraded independently in the settings screen. Models, tokenizers, and search score criteria are fixed along with the app version, and only missing or corrupted components are automatically restored by the app using the same fixed bundle.
 
-설정의 저장 위치에는 현재 경로와 사용량이 표시됩니다. 위치 변경 시 모델·설정·
-색인을 새 `_AIExplorer_Data` 폴더로 복사하고 원본은 보존하며, 앱 재시작 후 새
-위치를 사용합니다.
+The current path and usage are displayed in the settings' save location. When changing the location, models, settings, and indices are copied to the new `_AIExplorer_Data` folder, preserving the original, and the new location is used after restarting the app.
 
-## 개발 실행
+## Development Execution
 
-Windows 10/11과 .NET 10 SDK가 필요합니다.
+Windows 10/11 and the .NET 10 SDK are required.
 
-1. `run_dev.cmd`를 실행합니다.
-2. 또는 Visual Studio에서 `AIExplorer.sln`을 엽니다.
+1. Run `run_dev.cmd`.
+2. Alternatively, open `AIExplorer.sln` in Visual Studio.
 
-프로젝트 루트의 `NuGet.Config`는 빌드에 필요한 패키지를 공식 nuget.org 피드에서
-복원하도록 고정합니다. `NU1100` 오류가 계속되면 브라우저에서
-`https://api.nuget.org/v3/index.json` 접속이 되는지 확인하고, 방화벽·프록시·보안
-프로그램이 `api.nuget.org`를 차단하지 않는지 확인합니다.
+`NuGet.Config` in the project root locks the packages required for the build to be restored from the official nuget.org feed. If the `NU1100` error persists, verify whether `https://api.nuget.org/v3/index.json` is accessible in your browser, and ensure that your firewall, proxy, or security software is not blocking `api.nuget.org`.
 
-## 검증과 포터블 AI 번들 빌드
+## Verification and Portable AI Bundle Build
 
-- `verify_source.cmd`: Release 빌드와 검색·파일 서비스 스모크 테스트
-- `build_release.cmd`: 검증 후 self-contained EXE, AI 모델, CPU 실행기를 묶음
-- 결과: `dist\AIExplorer_v0.82.4-win-x64-portable.zip`
+* `verify_source.cmd`: Release build and search/file service smoke testing
+* `build_release.cmd`: Bundles the self-contained EXE, AI models, and CPU executor after verification
+* Result: `dist\AIExplorer_v0.82.4-win-x64-portable.zip`
 
-배포 폴더의 EXE는 .NET 런타임을 포함하므로 대상 PC에 .NET이나 AI 모델을 따로
-설치할 필요가 없습니다. 폴더 구조를 유지한 채 압축을 풀어 실행합니다. 개발용
-스크립트를 실행하거나 새 배포본을 빌드할 PC에만 .NET 10 SDK가 필요합니다.
+The EXE in the distribution folder contains the .NET runtime, so there is no need to separately install .NET or AI models on the target PC. Unzip and run while maintaining the folder structure. The .NET 10 SDK is only needed on the PC where you run development scripts or build a new distribution.
 
-## 주요 단축키
+## Main Shortcut Keys
 
-| 키 | 기능 |
+| Key | Function |
 | --- | --- |
-| `Alt+←` / `Alt+→` | 뒤로 / 앞으로 |
-| `Alt+↑` | 상위 폴더 |
-| `Ctrl+L` | 경로 입력 |
-| `Ctrl+Shift+N` | 새 폴더 |
-| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | 복사 / 잘라내기 / 붙여넣기 |
-| `F2` | 이름 변경 |
-| `Delete` | 휴지통으로 이동 |
-| `F5` | 새로고침 |
+| `Alt+←` / `Alt+→` | Back / Forward |
+| `Alt+↑` | Parent folder |
+| `Ctrl+L` | Enter path |
+| `Ctrl+Shift+N` | New folder |
+| `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | Copy / Cut / Paste |
+| `F2` | Rename |
+| `Delete` | Move to Recycle Bin |
+| `F5` | Refresh |
 
-## 안전 원칙
+## Safety Principles
 
-- 검색 계층은 파일을 자동으로 변경하지 않습니다.
-- 기본 삭제는 영구 삭제가 아니라 Windows 휴지통 이동입니다.
-- 드래그앤드롭 기본 동작은 복사이며, 이동은 `Shift`를 눌러야 합니다.
-- 복사 또는 이동 중 오류가 나면 새로 생성된 불완전 대상만 정리하고 원본은
-  보존합니다.
-- 네트워크 계정과 비밀번호는 저장하지 않고 현재 Windows 로그인 세션을
-  사용합니다.
-- 종료 정리는 AI 탐색기가 새로 실행한 프로세스만 대상으로 하며, 이미 실행 중이던
-  사진·문서 앱이나 사용자가 별도로 연 프로세스는 종료하지 않습니다.
+* The search layer does not automatically modify files.
+* The default deletion is not a permanent deletion but a move to the Windows Recycle Bin.
+* The default drag-and-drop action is copying, and moving requires holding `Shift`.
+* If an error occurs during a copy or move, only the newly created incomplete target is cleaned up, and the original is preserved.
+* Network accounts and passwords are not saved; the current Windows login session is used.
+* Exit cleanup targets only processes newly launched by AI Explorer, and does not terminate already running photo/document apps or processes opened separately by the user.
 
-## 로그 위치
+## Log Locations
 
-앱 로그와 로컬 AI 실행기 로그는 다음 위치에 저장됩니다.
+App logs and local AI executor logs are saved in the following locations.
 
 ```text
 _AIExplorer_Data\logs\AIExplorer_YYYYMMDD.log
 _AIExplorer_Data\models\semantic\local-ai-runtime.log
+
 ```
 
-실행 파일이 있는 폴더가 쓰기 금지라면 `%LOCALAPPDATA%\AIExplorer` 아래를
-확인합니다. 빌드 과정의 오류는 다음 명령으로 별도 저장할 수 있습니다.
+If the folder containing the executable is write-protected, check under `%LOCALAPPDATA%\AIExplorer`. Errors during the build process can be saved separately using the following command.
 
 ```powershell
 .\build_release.cmd > build_log.txt 2>&1
+
 ```
 
-## 아직 구현하지 않은 기능
+## Not Yet Implemented Features
 
-- 색인 관리 화면, 수동 전체 재색인, 파일 시스템 변경 실시간 반영
-- PDF 모든 페이지 및 구형 DOC/XLS/PPT/HWP 본문 추출
-- OCR·문서의 페이지·슬라이드·시트 단위 근거 구간 표시
-- PSD·RAW·SVG 내부 렌더링과 영상 프레임 시각 검색
-- 파일 충돌 시 세부 선택 창과 파일별 전송 진행률
+* Index management screen, manual full re-indexing, and real-time reflection of file system changes
+* Text extraction for all PDF pages and legacy DOC/XLS/PPT/HWP
+* Display evidence sections per page/slide/sheet for OCR and documents
+* Internal rendering of PSD/RAW/SVG and visual search for video frames
+* Detailed selection window upon file collision and per-file transfer progress
 
-자세한 내부 구조와 다음 단계는 `docs/ARCHITECTURE.md`와
-`docs/ROADMAP.md`에 정리되어 있습니다.
+Detailed internal structures and next steps are outlined in `docs/ARCHITECTURE.md` and `docs/ROADMAP.md`.
+
+```
+
+```
