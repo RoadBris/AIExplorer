@@ -156,6 +156,11 @@ Windows 10/11 and the .NET 10 SDK are required.
 
 `NuGet.Config` in the project root locks the packages required for the build to be restored from the official nuget.org feed. If the `NU1100` error persists, verify whether `https://api.nuget.org/v3/index.json` is accessible in your browser, and ensure that your firewall, proxy, or security software is not blocking `api.nuget.org`.
 
+**Simple Start**
+1. Run 'build_release.cmd'
+2. dist - AIExplorer_xx - AIExplorer.exe
+
+
 ## Verification and Portable AI Bundle Build
 
 * `verify_source.cmd`: Release build and search/file service smoke testing
